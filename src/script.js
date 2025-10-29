@@ -41,22 +41,22 @@ window.addEventListener('mousemove', (event) => {
 let currentIntersect = null
 
 /**
- * Objects
+ * Objects - Three Cones
  */
 const object1 = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.5, 0),
-    new THREE.MeshBasicMaterial({ color: '#808080' })
+    new THREE.ConeGeometry(0.5, 1, 32),
+    new THREE.MeshStandardMaterial({ color: '#ff0000' })
 )
 object1.position.x = - 2
 
 const object2 = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.5, 0),
-    new THREE.MeshBasicMaterial({ color: '#808080' })
+    new THREE.ConeGeometry(0.5, 1, 32),
+    new THREE.MeshStandardMaterial({ color: '#ff0000' })
 )
 
 const object3 = new THREE.Mesh(
-    new THREE.OctahedronGeometry(0.5, 0),
-    new THREE.MeshBasicMaterial({ color: '#808080' })
+    new THREE.ConeGeometry(0.5, 1, 32),
+    new THREE.MeshStandardMaterial({ color: '#ff0000' })
 )
 object3.position.x = 2
 
@@ -65,24 +65,31 @@ scene.add(object1, object2, object3)
 const objectsToTest = [object1, object2, object3]
 
 window.addEventListener('click', () => {
-    if (currentIntersect) {
-        switch (currentIntersect.object) {
-            case object1:
-                console.log('Clicked sphere 1')
-                break
-            case object2:
-                console.log('Clicked sphere 2')
-                break
-            case object3:
-                console.log('Clicked sphere 3')
-                break
+    // Cast a ray to detect what was clicked
+    raycaster.setFromCamera(mouse, camera)
+    const intersects = raycaster.intersectObjects(objectsToTest)
+    
+    // Check for cone clicks
+    for (const intersect of intersects) {
+        if (intersect.object === object1) {
+            console.log('Clicked cone 1')
+            return
         }
-        // Check if duck is clicked
-        if (model) {
-            const clickedObject = currentIntersect.object
-            if (clickedObject.parent === model || model.children.includes(clickedObject)) {
-                console.log('Clicked duck!')
-            }
+        if (intersect.object === object2) {
+            console.log('Clicked cone 2')
+            return
+        }
+        if (intersect.object === object3) {
+            console.log('Clicked cone 3')
+            return
+        }
+    }
+    
+    // Check for duck click
+    if (model) {
+        const duckIntersects = raycaster.intersectObject(model, true)
+        if (duckIntersects.length > 0) {
+            console.log('Clicked duck!')
         }
     }
 })
@@ -96,11 +103,12 @@ const gltfLoader = new GLTFLoader()
  * Model
  */
 let model = null
+const modelTargetScale = new THREE.Vector3(1, 1, 1)
 gltfLoader.load(
     '/models/Duck/glTF-Binary/Duck.glb',
     (gltf) => {
         model = gltf.scene
-        model.position.set(2, 0, -1.5)
+        model.position.set(4, 0, -1)
         scene.add(model)
         console.log('Duck model loaded!')
     }
@@ -172,9 +180,9 @@ const tick = () =>
     
     const intersects = raycaster.intersectObjects(objectsToTest)
 
-    // Reset colors
+    // Reset colors back to red
     for (const object of objectsToTest) {
-        object.material.color.set('#808080')
+        object.material.color.set('#ff0000')
     }
 
     // Turn intersected objects blue
@@ -184,14 +192,23 @@ const tick = () =>
 
     // Handle duck model interaction
     if (model) {
-        const duckIntersects = raycaster.intersectObject(model)
+        const duckIntersects = raycaster.intersectObject(model, true)
         
-        // Scale duck on hover
+        // Set target scale based on hover
         if (duckIntersects.length > 0) {
-            model.scale.set(1.2, 1.2, 1.2)
+            if (modelTargetScale.x === 1) {
+                console.log('mouse enter duck')
+            }
+            modelTargetScale.set(1.2, 1.2, 1.2)
         } else {
-            model.scale.set(1, 1, 1)
+            if (modelTargetScale.x > 1) {
+                console.log('mouse leave duck')
+            }
+            modelTargetScale.set(1, 1, 1)
         }
+        
+        // Smoothly interpolate the scale
+        model.scale.lerp(modelTargetScale, 0.1)
     }
 
     // Detect mouse enter/leave
